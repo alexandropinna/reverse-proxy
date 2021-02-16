@@ -1,0 +1,60 @@
+# traefik.toml 
+################################################################                                                        
+# Global configuration                                                                                                  
+################################################################                                                        
+
+[entryPoints]
+    [entryPoints.http]
+        address = ":80"
+    [entryPoints.https]
+        address = ":443"
+    [entryPoints.smtp]
+        address = ":25"
+    [entryPoints.pop3]
+        address = ":110"
+    [entryPoints.imap]
+        address = ":143"
+    [entryPoints.msa]
+        address = ":587"
+    [entryPoints.imaps]
+        address = ":993"
+    [entryPoints.pop3s]
+        address = ":995"
+    [entryPoints.mysql]
+        address = ":3306"
+
+[api]
+
+[providers]
+    [providers.docker]
+        endpoint = "unix:///var/run/docker.sock"
+        watch = true
+
+    [providers.file]
+        directory= "/config"
+        watch = true
+        #filename = "/etc/traefik/services.toml"
+
+[certificatesResolvers]
+ [certificatesResolvers.mydnschallenge]
+  [certificatesResolvers.mydnschallenge.acme]
+    email = "admin@teparatres.cl"
+    storage = "/letsencrypt/acme.json"
+    [certificatesResolvers.mydnschallenge.acme.httpChallenge]
+     entryPoint = "http"
+# Configuring a buffer of 100 lines
+[accessLog]
+    filePath = "/logs/access.log"
+    bufferingSize = 100
+
+# Writing Logs to a File
+[log]
+  filePath = "/logs/error.log"
+  level="ERROR"
+
+# Redirect to https
+[http.middlewares]
+  [http.middlewares.mydnschallenge.redirectScheme]
+    # ...
+    permanent = true
+

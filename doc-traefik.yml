@@ -1,0 +1,80 @@
+version: "3.3"
+
+services:
+  reverse-proxy:
+    image: "traefik:v2.3"
+    container_name: traefik
+    restart: always
+    ports:
+      - "80:80"     # The HTTP port                                                                       
+      - "443:443"   # The HTTPS port
+      - '25:25'    # SMTP - mostly processing incoming mails    
+      - '110:110'  #  POP3 - standard protocol for accessing mailbox, STARTTLS is required before client auth
+      - '143:143'  #  IMAP - standard protocol for accessing mailbox, STARTTLS is required before client auth
+      - '587:587'  #  MSA - SMTP port used primarily for email clients after STARTTLS and auth             
+      - '993:993'  #  IMAPS - alternative port for IMAP encrypted since connection                        
+      - '995:995'  #  POP3S - encrypted POP3 since connections
+    command:
+      #- --api.insecure
+      - --certificatesresolvers.mydnschallenge.acme.email=admin@123menu.cl
+      - --certificatesresolvers.mydnschallenge.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.mydnschallenge.acme.tlschallenge=true
+      - "--entrypoints.smtp.address=:25"
+      - "--entrypoints.pop3.address=:110"
+      - "--entrypoints.imap.address=:143"
+      - "--entrypoints.msa.address=:587"
+      - "--entrypoints.imaps.address=:993"
+      - "--entrypoints.mysql.address=:3306"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock # So that Traefik can listen to the Docker events       
+      - "/var/ftp/reverse-proxy/traefik.toml:/etc/traefik/traefik.toml"
+      - "/var/ftp/reverse-proxy/config:/config"
+      - "/var/ftp/reverse-proxy/letsencrypt:/letsencrypt"
+      - "/var/ftp/reverse-proxy/logs:/logs"
+    labels:
+      - "traefik.http.routers.api.rule=Host(`reverseproxy.123menu.cl`)"
+      - "traefik.http.routers.api.service=api@internal"
+      - "traefik.http.routers.api.entrypoints=https"
+      - "traefik.http.routers.api.tls.certresolver=mydnschallenge"
+      - "traefik.http.routers.api.middlewares=auth"              
+      - "traefik.http.middlewares.auth.basicauth.users=admin:$$apr1$$jZzcoo4U$$sZgbuA8vu5niTVIyx4oub1"
+      - "traefik.http.routers.nas.entrypoints=https"
+      - "traefik.http.routers.nas.rule=Host(`nas.123menu.cl`)" # local machine
+      - "traefik.http.routers.nas.service=nas@file"
+      - "traefik.http.routers.nas.tls.certresolver=mydnschallenge"
+      # global redirect to https
+      - "traefik.http.routers.http-catchall.rule=hostregexp(`{host:.+}`)"
+      - "traefik.http.routers.http-catchall.entrypoints=http"
+      - "traefik.http.routers.http-catchall.middlewares=redirect-https"
+
+      # middleware redirect
+      - "traefik.http.middlewares.redirect-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-https.redirectscheme.permanent=true"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 200M
+    networks:
+      - net
+
+  traefik-certificate-extractor:
+    container_name: traefik-certs-extractor
+    image: danielhuisman/traefik-certificate-extractor
+    restart: always
+    depends_on:
+      - reverse-proxy
+    volumes:
+      - "/var/ftp/reverse-proxy/letsencrypt:/app/data"
+    labels:
+      - "traefik.enable=false"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 50M
+    networks:
+      - net
+
+networks:
+  net:
