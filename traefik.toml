@@ -8,20 +8,6 @@
         address = ":80"
     [entryPoints.https]
         address = ":443"
-    [entryPoints.smtp]
-        address = ":25"
-    [entryPoints.pop3]
-        address = ":110"
-    [entryPoints.imap]
-        address = ":143"
-    [entryPoints.msa]
-        address = ":587"
-    [entryPoints.imaps]
-        address = ":993"
-    [entryPoints.pop3s]
-        address = ":995"
-    [entryPoints.mysql]
-        address = ":3306"
 
 [api]
 
