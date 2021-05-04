@@ -8,23 +8,11 @@ services:
     ports:
       - "80:80"     # The HTTP port                                                                       
       - "443:443"   # The HTTPS port
-      - '25:25'    # SMTP - mostly processing incoming mails    
-      - '110:110'  #  POP3 - standard protocol for accessing mailbox, STARTTLS is required before client auth
-      - '143:143'  #  IMAP - standard protocol for accessing mailbox, STARTTLS is required before client auth
-      - '587:587'  #  MSA - SMTP port used primarily for email clients after STARTTLS and auth             
-      - '993:993'  #  IMAPS - alternative port for IMAP encrypted since connection                        
-      - '995:995'  #  POP3S - encrypted POP3 since connections
     command:
       #- --api.insecure
       - --certificatesresolvers.mydnschallenge.acme.email=admin@${DOMAIN}
       - --certificatesresolvers.mydnschallenge.acme.storage=/letsencrypt/acme.json
       - --certificatesresolvers.mydnschallenge.acme.tlschallenge=true
-      - "--entrypoints.smtp.address=:25"
-      - "--entrypoints.pop3.address=:110"
-      - "--entrypoints.imap.address=:143"
-      - "--entrypoints.msa.address=:587"
-      - "--entrypoints.imaps.address=:993"
-      - "--entrypoints.mysql.address=:3306"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock # So that Traefik can listen to the Docker events       
       - "${RUTA}/traefik.toml:/etc/${NAME}/traefik.toml"
