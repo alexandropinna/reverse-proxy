@@ -1,69 +1,44 @@
-version: "3.3"
+version: '3.7'
 
 services:
-  reverse-proxy:
-    image: "traefik:v2.3"
-    container_name: ${NAME}
-    restart: always
+  traefik:
+    # The latest official supported Traefik docker image
+    image: traefik:v2.9
+    container_name: traefik
+    # Enables the Traefik Dashboard and tells Traefik to listen to docker
+    # enable --log.level=INFO so we can see what Traefik is doing in the log files
     ports:
-      - "80:80"     # The HTTP port                                                                       
-      - "443:443"   # The HTTPS port
-    command:
-      #- --api.insecure
-      - --certificatesresolvers.mydnschallenge.acme.email=admin@${DOMAIN}
-      - --certificatesresolvers.mydnschallenge.acme.storage=/letsencrypt/acme.json
-      - --certificatesresolvers.mydnschallenge.acme.tlschallenge=true
+      # Exposes port 80 for incomming web requests
+      - "80:80"
+      - "443:443"
+      # The Web UI port http://0.0.0.0:8080 (enabled by --api.insecure=true)
+      #- "8080:8080"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock # So that Traefik can listen to the Docker events       
-      - "${RUTA}/traefik.toml:/etc/${NAME}/traefik.toml"
-      - "${RUTA}/config:/config"
-      - "${RUTA}/letsencrypt:/letsencrypt"
-      - "${RUTA}/logs:/logs"
+      # So that Traefik can listen to the Docker events
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Copies the Let's Encrypt certificate locally for ease of backing up
+      - ./letsencrypt:/letsencrypt
+       # Mounts the Traefik static configuration inside the Traefik container
+      - ./traefik.yml:/etc/traefik/traefik.yml
     labels:
-      - "traefik.http.routers.api.rule=Host(`reverseproxy.${DOMAIN}`)"
-      - "traefik.http.routers.api.service=api@internal"
-      - "traefik.http.routers.api.entrypoints=https"
-      - "traefik.http.routers.api.tls.certresolver=mydnschallenge"
-      - "traefik.http.routers.api.middlewares=auth"         
-      #For the creation of the user an password user the command: "echo $(htpasswd -nb user "password") | sed -e s/\\$/\\$\\$/g"
-      - "traefik.http.middlewares.auth.basicauth.users=#########"
-      - "traefik.http.routers.nas.entrypoints=https"
-      - "traefik.http.routers.nas.rule=Host(`nas.${DOMAIN}`)" # local machine
-      - "traefik.http.routers.nas.service=nas@file"
-      - "traefik.http.routers.nas.tls.certresolver=mydnschallenge"
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.HOST`,`www.traefik.HOST`)"
+      - "traefik.http.routers.traefik.service=traefik"
+      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=myresolver"
+      - "traefik.http.routers.traefik.middlewares=traefik-compress,traefik-auth"
+      # Middleware BasicAuth
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=traefik:$$apr1$$elZCCqhP$$SpYlCbPPQ9MICnLQp/pPt0"
+      # Compress Middleware
+      - "traefik.http.middlewares.traefik-compress.compress=true"
       # global redirect to https
       - "traefik.http.routers.http-catchall.rule=hostregexp(`{host:.+}`)"
-      - "traefik.http.routers.http-catchall.entrypoints=http"
+      - "traefik.http.routers.http-catchall.entrypoints=web"
       - "traefik.http.routers.http-catchall.middlewares=redirect-https"
-
       # middleware redirect
       - "traefik.http.middlewares.redirect-https.redirectscheme.scheme=https"
       - "traefik.http.middlewares.redirect-https.redirectscheme.permanent=true"
-    deploy:
-      resources:
-        limits:
-          cpus: '0.50'
-          memory: 200M
-    networks:
-      - net
-
-  traefik-certificate-extractor:
-    container_name: traefik-certs-extractor
-    image: danielhuisman/traefik-certificate-extractor
-    restart: always
-    depends_on:
-      - reverse-proxy
-    volumes:
-      - "${RUTA}/letsencrypt:/app/data"
-    labels:
-      - "traefik.enable=false"
-    deploy:
-      resources:
-        limits:
-          cpus: '0.50'
-          memory: 50M
-    networks:
-      - net
-
-networks:
-  net:
+    environment:
+      ## API Token
+      - "CF_DNS_API_TOKEN=TOKEN"

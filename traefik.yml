@@ -1,0 +1,68 @@
+################################################################
+# API and dashboard configuration
+################################################################
+api:
+  # Dashboard
+  dashboard: true
+  insecure: false
+################################################################
+# Docker configuration backend
+################################################################
+providers:
+  docker:
+    exposedByDefault: false
+################################################################
+# Traefik Logging -  DEBUG, PANIC, FATAL, ERROR, WARN, and INFO (DEFAULT is ERROR)
+################################################################
+log:
+  level: INFO
+
+################################################################
+# Prometheus Metrics
+################################################################  
+# metrics:
+#   prometheus:
+#     buckets:
+#       - 0.1
+#       - 0.3
+#       - 1.2
+#       - 5.0
+################################################################
+# Entrypoint
+################################################################
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+
+################################################################
+# Challenege DNS
+################################################################
+certificatesResolvers:
+  myresolver:
+    acme:
+      email: alex919090@gmail.com 
+      storage: /letsencrypt/acme.json
+      dnsChallenge:
+        provider: PROVIDER
+        delayBeforeCheck: 0
+
+
+http:
+  middlewares:
+    redirect-https:
+      redirectScheme:
+        scheme: http
+    myresolver:
+      redirectScheme:
+        permanent: true
+  routers:
+    redirs:
+      rule: 'HostRegexp(`{host:.+}`)'
+      entrypoints:
+        - web
+      middlewares:
+        - redirect-https
+      service: noop
+
