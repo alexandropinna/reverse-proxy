@@ -1,8 +1,0 @@
-[http]
-    [http.services]
-        [http.services.nas]
-            [http.services.nas.loadBalancer]
-                [[http.services.nas.loadBalancer.servers]]
-                    url = "http://172.19.0.2:50" # IP:Port of my local service (nas for example)
-
-
